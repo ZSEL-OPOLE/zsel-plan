@@ -60,3 +60,4 @@ Miękkie (minimalizowane): okienka, ta sama lekcja >1×/dzień. Rozszerzalne o p
 - Q&A: TechBuddy RAG nad opublikowanym planem.
 
 Projekt: ../../REPOS/PLAN-LEKCJI-DESIGN.md
+# Built via GitHub Actions on zsel-general org-level runner (ARC v2)
