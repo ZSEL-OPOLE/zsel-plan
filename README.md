@@ -61,3 +61,4 @@ Miękkie (minimalizowane): okienka, ta sama lekcja >1×/dzień. Rozszerzalne o p
 
 Projekt: ../../REPOS/PLAN-LEKCJI-DESIGN.md
 # Built via GitHub Actions on zsel-general org-level runner (ARC v2)
+
