@@ -1,0 +1,37 @@
+name: Build & Push plan-lekcji
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: 10.189.5.41:30500
+  IMAGE: zsel/plan-lekcji
+
+jobs:
+  test:
+    runs-on: [self-hosted, zsel]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install ortools fastapi pydantic pytest
+      - run: python -m pytest tests/ -q
+        if: hashFiles('tests/') != ''
+      - name: Smoke test import
+        run: |
+          PYTHONPATH=. python -c "from api.main import app; print('OK:', len(app.routes), 'routes')"
+
+  build:
+    needs: test
+    runs-on: [self-hosted, zsel]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build & push image
+        run: |
+          docker build -t $REGISTRY/$IMAGE:${{ github.sha }} -t $REGISTRY/$IMAGE:latest .
+          docker push $REGISTRY/$IMAGE:${{ github.sha }}
+          docker push $REGISTRY/$IMAGE:latest
