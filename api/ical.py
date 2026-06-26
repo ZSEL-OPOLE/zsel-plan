@@ -1,7 +1,8 @@
 """iCal (RFC 5545) export for timetable data."""
+
 from __future__ import annotations
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 # Godziny startowe/końcowe per numer lekcji (Zał. Organiz. ZSEL Opole)
 PERIOD_TIMES: dict[int, tuple[str, str]] = {
@@ -27,7 +28,12 @@ def _next_weekday(d: date, weekday: int) -> date:
 
 
 def _escape(s: str) -> str:
-    return s.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
+    return (
+        s.replace("\\", "\\\\")
+        .replace(",", "\\,")
+        .replace(";", "\\;")
+        .replace("\n", "\\n")
+    )
 
 
 def build_ical(
@@ -56,7 +62,7 @@ def build_ical(
     until_str = school_year_end.strftime("%Y%m%dT235959Z")
 
     if filter_by is not None:
-        lekcje = [l for l in lekcje if l.get(filter_field) == filter_by]
+        lekcje = [lesson for lesson in lekcje if lesson.get(filter_field) == filter_by]
 
     lines = [
         "BEGIN:VCALENDAR",
@@ -64,16 +70,16 @@ def build_ical(
         "PRODID:-//ZSEL Opole//Plan Lekcji//PL",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        f"X-WR-TIMEZONE:Europe/Warsaw",
+        "X-WR-TIMEZONE:Europe/Warsaw",
     ]
     if filter_by:
         lines.append(f"X-WR-CALNAME:{_escape(filter_by)} — Plan lekcji")
     else:
         lines.append("X-WR-CALNAME:Plan lekcji ZSEL")
 
-    for l in lekcje:
-        day_idx = l["dzien_idx"]
-        okres = l["okres"]
+    for lesson in lekcje:
+        day_idx = lesson["dzien_idx"]
+        okres = lesson["okres"]
         if okres not in PERIOD_TIMES:
             continue
         t_start, t_end = PERIOD_TIMES[okres]
@@ -86,23 +92,25 @@ def build_ical(
         rrule_day = RRULE_DAYS[day_idx]
         rrule = f"FREQ=WEEKLY;BYDAY={rrule_day};UNTIL={until_str}"
 
-        summary_parts = [l["przedmiot"]]
+        summary_parts = [lesson["przedmiot"]]
         if filter_field != "klasa":
-            summary_parts.append(l["klasa"])
-        summary_parts.append(l["sala"])
+            summary_parts.append(lesson["klasa"])
+        summary_parts.append(lesson["sala"])
         summary = " / ".join(summary_parts)
 
         desc_parts = []
         if filter_field != "nauczyciel":
-            desc_parts.append(f"Nauczyciel: {l['nauczyciel']}")
-        desc_parts.append(f"Klasa: {l['klasa']}")
-        desc_parts.append(f"Sala: {l['sala']}")
+            desc_parts.append(f"Nauczyciel: {lesson['nauczyciel']}")
+        desc_parts.append(f"Klasa: {lesson['klasa']}")
+        desc_parts.append(f"Sala: {lesson['sala']}")
         desc = "\\n".join(desc_parts)
 
-        uid = str(uuid.uuid5(
-            uuid.NAMESPACE_DNS,
-            f"{l['klasa']}-{l['przedmiot']}-{l['nauczyciel']}-{day_idx}-{okres}"
-        ))
+        uid = str(
+            uuid.uuid5(
+                uuid.NAMESPACE_DNS,
+                f"{lesson['klasa']}-{lesson['przedmiot']}-{lesson['nauczyciel']}-{day_idx}-{okres}",
+            )
+        )
 
         lines += [
             "BEGIN:VEVENT",
@@ -112,7 +120,7 @@ def build_ical(
             f"RRULE:{rrule}",
             f"SUMMARY:{_escape(summary)}",
             f"DESCRIPTION:{desc}",
-            f"LOCATION:{_escape(l['sala'])}",
+            f"LOCATION:{_escape(lesson['sala'])}",
             "END:VEVENT",
         ]
 
@@ -137,7 +145,7 @@ def _fold(text: str) -> str:
             while len(cut) > 0 and (cut[-1] & 0xC0) == 0x80:  # UTF-8 continuation
                 cut = cut[:-1]
             chunks.append(cut.decode("utf-8"))
-            encoded = encoded[len(cut):]
+            encoded = encoded[len(cut) :]
         if encoded:
             chunks.append(encoded.decode("utf-8"))
         result.append(("\r\n ").join(chunks))

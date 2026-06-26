@@ -1,7 +1,6 @@
 """Plan lekcji ZSEL — FastAPI (OR-Tools CP-SAT solver + iCal export)."""
+
 from __future__ import annotations
-import json
-import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -47,7 +46,9 @@ def solve_plan(req: SolveRequest) -> SolveResponse:
     global _last_plan, _last_days
 
     rooms_sets = {sala: set(prz) for sala, prz in req.rooms.items()}
-    requirements = [(r.klasa, r.przedmiot, r.nauczyciel, r.godziny) for r in req.requirements]
+    requirements = [
+        (r.klasa, r.przedmiot, r.nauczyciel, r.godziny) for r in req.requirements
+    ]
     unavail: dict[str, set[tuple[str, int]]] = {}
     for u in req.teacher_unavail:
         unavail[u.nauczyciel] = {(d, p) for d, p in u.sloty}
@@ -66,20 +67,26 @@ def solve_plan(req: SolveRequest) -> SolveResponse:
         raise HTTPException(
             status_code=422,
             detail=f"Solver zwrócił status: {result.status}. "
-                   "Sprawdź czy wymagania są wykonalne (liczba godzin, sale, dostępność).",
+            "Sprawdź czy wymagania są wykonalne (liczba godzin, sale, dostępność).",
         )
 
     lekcje: list[LessonOut] = []
-    for (klasa, day_idx, okres), (przedmiot, nauczyciel, sala) in result.timetable.items():
-        lekcje.append(LessonOut(
-            klasa=klasa,
-            dzien=req.days[day_idx],
-            dzien_idx=day_idx,
-            okres=okres,
-            przedmiot=przedmiot,
-            nauczyciel=nauczyciel,
-            sala=sala,
-        ))
+    for (klasa, day_idx, okres), (
+        przedmiot,
+        nauczyciel,
+        sala,
+    ) in result.timetable.items():
+        lekcje.append(
+            LessonOut(
+                klasa=klasa,
+                dzien=req.days[day_idx],
+                dzien_idx=day_idx,
+                okres=okres,
+                przedmiot=przedmiot,
+                nauczyciel=nauczyciel,
+                sala=sala,
+            )
+        )
 
     _last_plan = lekcje
     _last_days = req.days
@@ -91,16 +98,22 @@ def solve_plan(req: SolveRequest) -> SolveResponse:
 def list_klasy() -> list[str]:
     """Zwróć listę klas z załadowanego planu."""
     if not _last_plan:
-        raise HTTPException(status_code=404, detail="Brak załadowanego planu. Najpierw POST /api/plan/solve")
-    return sorted({l.klasa for l in _last_plan})
+        raise HTTPException(
+            status_code=404,
+            detail="Brak załadowanego planu. Najpierw POST /api/plan/solve",
+        )
+    return sorted({lesson.klasa for lesson in _last_plan})
 
 
 @app.get("/api/plan/nauczyciele")
 def list_nauczyciele() -> list[str]:
     """Zwróć listę nauczycieli z załadowanego planu."""
     if not _last_plan:
-        raise HTTPException(status_code=404, detail="Brak załadowanego planu. Najpierw POST /api/plan/solve")
-    return sorted({l.nauczyciel for l in _last_plan})
+        raise HTTPException(
+            status_code=404,
+            detail="Brak załadowanego planu. Najpierw POST /api/plan/solve",
+        )
+    return sorted({lesson.nauczyciel for lesson in _last_plan})
 
 
 @app.get("/api/plan/klasa/{klasa}")
@@ -108,10 +121,12 @@ def get_plan_klasa(klasa: str) -> list[LessonOut]:
     """Pobierz plan tygodniowy dla klasy."""
     if not _last_plan:
         raise HTTPException(status_code=404, detail="Brak załadowanego planu.")
-    result = [l for l in _last_plan if l.klasa == klasa]
+    result = [lesson for lesson in _last_plan if lesson.klasa == klasa]
     if not result:
-        raise HTTPException(status_code=404, detail=f"Klasa '{klasa}' nie istnieje w planie.")
-    return sorted(result, key=lambda l: (l.dzien_idx, l.okres))
+        raise HTTPException(
+            status_code=404, detail=f"Klasa '{klasa}' nie istnieje w planie."
+        )
+    return sorted(result, key=lambda lesson: (lesson.dzien_idx, lesson.okres))
 
 
 @app.get("/api/plan/nauczyciel/{nauczyciel}")
@@ -119,16 +134,21 @@ def get_plan_nauczyciel(nauczyciel: str) -> list[LessonOut]:
     """Pobierz plan tygodniowy dla nauczyciela."""
     if not _last_plan:
         raise HTTPException(status_code=404, detail="Brak załadowanego planu.")
-    result = [l for l in _last_plan if l.nauczyciel == nauczyciel]
+    result = [lesson for lesson in _last_plan if lesson.nauczyciel == nauczyciel]
     if not result:
-        raise HTTPException(status_code=404, detail=f"Nauczyciel '{nauczyciel}' nie istnieje w planie.")
-    return sorted(result, key=lambda l: (l.dzien_idx, l.okres))
+        raise HTTPException(
+            status_code=404, detail=f"Nauczyciel '{nauczyciel}' nie istnieje w planie."
+        )
+    return sorted(result, key=lambda lesson: (lesson.dzien_idx, lesson.okres))
 
 
 @app.get("/api/plan/ical/klasa/{klasa}")
 def ical_klasa(
     klasa: str,
-    rok_start: Annotated[str | None, Query(description="Pierwszy poniedziałek roku szkolnego, format YYYY-MM-DD")] = None,
+    rok_start: Annotated[
+        str | None,
+        Query(description="Pierwszy poniedziałek roku szkolnego, format YYYY-MM-DD"),
+    ] = None,
 ) -> Response:
     """
     Pobierz plan klasy jako iCal (do importu w Nextcloud Calendar, Google Calendar itp.).
@@ -137,9 +157,11 @@ def ical_klasa(
     if not _last_plan:
         raise HTTPException(status_code=404, detail="Brak załadowanego planu.")
 
-    lekcje_raw = [l.model_dump() for l in _last_plan]
+    lekcje_raw = [lesson.model_dump() for lesson in _last_plan]
     start_date = date.fromisoformat(rok_start) if rok_start else None
-    cal = build_ical(lekcje_raw, filter_by=klasa, filter_field="klasa", school_year_start=start_date)
+    cal = build_ical(
+        lekcje_raw, filter_by=klasa, filter_field="klasa", school_year_start=start_date
+    )
 
     return Response(
         content=cal,
@@ -151,20 +173,30 @@ def ical_klasa(
 @app.get("/api/plan/ical/nauczyciel/{nauczyciel}")
 def ical_nauczyciel(
     nauczyciel: str,
-    rok_start: Annotated[str | None, Query(description="Pierwszy poniedziałek roku szkolnego, format YYYY-MM-DD")] = None,
+    rok_start: Annotated[
+        str | None,
+        Query(description="Pierwszy poniedziałek roku szkolnego, format YYYY-MM-DD"),
+    ] = None,
 ) -> Response:
     """Pobierz plan nauczyciela jako iCal."""
     if not _last_plan:
         raise HTTPException(status_code=404, detail="Brak załadowanego planu.")
 
-    lekcje_raw = [l.model_dump() for l in _last_plan]
+    lekcje_raw = [lesson.model_dump() for lesson in _last_plan]
     start_date = date.fromisoformat(rok_start) if rok_start else None
-    cal = build_ical(lekcje_raw, filter_by=nauczyciel, filter_field="nauczyciel", school_year_start=start_date)
+    cal = build_ical(
+        lekcje_raw,
+        filter_by=nauczyciel,
+        filter_field="nauczyciel",
+        school_year_start=start_date,
+    )
 
     return Response(
         content=cal,
         media_type="text/calendar; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="plan-{nauczyciel}.ics"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="plan-{nauczyciel}.ics"'
+        },
     )
 
 
@@ -176,7 +208,7 @@ def ical_all(
     if not _last_plan:
         raise HTTPException(status_code=404, detail="Brak załadowanego planu.")
 
-    lekcje_raw = [l.model_dump() for l in _last_plan]
+    lekcje_raw = [lesson.model_dump() for lesson in _last_plan]
     start_date = date.fromisoformat(rok_start) if rok_start else None
     cal = build_ical(lekcje_raw, school_year_start=start_date)
 
