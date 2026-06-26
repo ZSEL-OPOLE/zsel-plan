@@ -1,0 +1,8 @@
+# CODEOWNERS — zsel-plan
+* @ZSEL-OPOLE/admins
+
+# Solver — core logika
+solver/ @ZSEL-OPOLE/admins
+
+# CI/CD
+.github/ @ZSEL-OPOLE/admins
