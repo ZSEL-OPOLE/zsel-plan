@@ -31,7 +31,7 @@ jobs:
   # ---------------------------------------------------------------------------
   lint:
     name: "🔍 Lint"
-    runs-on: [self-hosted, zsel-general]
+    runs-on: zsel-general
     timeout-minutes: 5
 
     steps:
@@ -59,7 +59,7 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: "🧪 Tests"
-    runs-on: [self-hosted, zsel-general]
+    runs-on: zsel-general
     timeout-minutes: 10
     needs: lint
 
@@ -103,7 +103,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: "🐳 Build → zot"
-    runs-on: [self-hosted, zsel-general]
+    runs-on: zsel-general
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     timeout-minutes: 30
@@ -126,18 +126,32 @@ jobs:
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "🏷️ Tag: ${TAG}"
 
+      # crane — push OCI format do Zot (HTTP insecure, Zot v2 odrzuca Docker manifest v2)
+      - name: Install crane
+        run: |
+          set -eo pipefail
+          CRANE_VER=0.20.2
+          INSTALL_DIR="${HOME}/.local/bin"
+          mkdir -p "${INSTALL_DIR}"
+          curl --retry 3 --retry-delay 2 -fsSL \
+            "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VER}/go-containerregistry_Linux_arm64.tar.gz" \
+            | tar -C "${INSTALL_DIR}" -xz crane
+          echo "${INSTALL_DIR}" >> "$GITHUB_PATH"
+          "${INSTALL_DIR}/crane" version
+
       - name: Setup Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.7.0
 
-      - name: Build & push → zot
+      # Zot v2 (distSpecVersion 1.1.0) odrzuca Docker manifest v2 (push:true z buildx).
+      # Rozwiązanie: OCI tar → tar -xf → OCI dir → crane push (vnd.oci.image.manifest.v1+json)
+      - name: Build arm64 (OCI tar)
         uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.ZOT }}/${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.ZOT }}/${{ env.IMAGE }}:latest
+          push: false
+          outputs: type=oci,dest=/tmp/plan-oci.tar
+          tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
           provenance: false
           cache-from: type=local,src=/tmp/.buildx-cache-plan
           cache-to: type=local,dest=/tmp/.buildx-cache-plan-new,mode=max
@@ -145,16 +159,26 @@ jobs:
       - name: Rotate cache
         run: |
           rm -rf /tmp/.buildx-cache-plan
-          if [ -d /tmp/.buildx-cache-plan-new ]; then
-            mv /tmp/.buildx-cache-plan-new /tmp/.buildx-cache-plan
-          fi
+          mv /tmp/.buildx-cache-plan-new /tmp/.buildx-cache-plan 2>/dev/null || true
+
+      - name: Push → Zot via crane (OCI format)
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          OCI_DIR="/tmp/plan-oci-layout"
+          mkdir -p "${OCI_DIR}"
+          tar -xf /tmp/plan-oci.tar -C "${OCI_DIR}"
+          test -f "${OCI_DIR}/index.json" || { echo "❌ index.json not found"; exit 1; }
+          crane push --insecure "${OCI_DIR}" "${{ env.ZOT }}/${{ env.IMAGE }}:${TAG}"
+          crane push --insecure "${OCI_DIR}" "${{ env.ZOT }}/${{ env.IMAGE }}:latest"
+          rm -rf /tmp/plan-oci.tar "${OCI_DIR}"
+          echo "✅ ${{ env.ZOT }}/${{ env.IMAGE }}:${TAG}"
 
   # ---------------------------------------------------------------------------
   # 4. GitOps update — gitops-infra/06-apps/manifests/plan/
   # ---------------------------------------------------------------------------
   gitops-update:
     name: "🔄 GitOps update"
-    runs-on: [self-hosted, zsel-general]
+    runs-on: zsel-general
     needs: build
     timeout-minutes: 10
 
