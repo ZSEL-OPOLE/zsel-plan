@@ -3,6 +3,7 @@ Testy jednostkowe silnika planowania lekcji (solver/solver.py).
 Pokrywa: podstawowe rozwiązanie, kolizje sal/nauczycieli, niedostępność, luki,
 ograniczenia sali, wydajność, INFEASIBLE.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,7 +16,7 @@ import pytest
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from solver.solver import Instance, Result, solve
+from solver.solver import Instance, solve  # noqa: E402
 
 
 # ===========================================================================
@@ -258,7 +259,9 @@ class TestTeacherUnavailability:
         for (klasa, day_idx, period), (prz, naucz, sala) in result.timetable.items():
             if naucz == "Jan Kowalski":
                 day_name = inst.days[day_idx]
-                assert (day_name, period) not in inst.teacher_unavail.get(naucz, set()), (
+                assert (day_name, period) not in inst.teacher_unavail.get(
+                    naucz, set()
+                ), (
                     f"Nauczyciel {naucz} ma lekcję w niedostępnym slocie ({day_name}, {period})"
                 )
 
@@ -301,8 +304,8 @@ class TestTeacherUnavailability:
 
         # Anna Nowak powinna móc mieć lekcję w poniedziałek
         anna_slots = [
-            (day_idx, period) for (klasa, day_idx, period), (prz, naucz, sala)
-            in result.timetable.items()
+            (day_idx, period)
+            for (klasa, day_idx, period), (prz, naucz, sala) in result.timetable.items()
             if naucz == "Anna Nowak"
         ]
         assert len(anna_slots) >= 1
@@ -321,8 +324,8 @@ class TestRoomConstraints:
         inst = make_instance(
             requirements=[("1A", "Fizyka", "Marek Zając", 1)],
             rooms={
-                "S01": set(),              # dowolne
-                "Lab01": {"Fizyka"},       # tylko Fizyka
+                "S01": set(),  # dowolne
+                "Lab01": {"Fizyka"},  # tylko Fizyka
             },
             days=["pon", "wt"],
             periods=[1, 2, 3, 4, 5],
@@ -333,9 +336,7 @@ class TestRoomConstraints:
 
         for (klasa, day_idx, period), (prz, naucz, sala) in result.timetable.items():
             if prz == "Fizyka":
-                assert sala == "Lab01", (
-                    f"Fizyka powinna być w Lab01, jest w {sala}"
-                )
+                assert sala == "Lab01", f"Fizyka powinna być w Lab01, jest w {sala}"
 
     def test_non_dedicated_lesson_not_in_restricted_room(self):
         """Matematyka nie trafia do sali Lab01, która jest tylko dla Fizyki."""
@@ -345,8 +346,8 @@ class TestRoomConstraints:
                 ("1A", "Fizyka", "Marek Zając", 1),
             ],
             rooms={
-                "S01": set(),              # dowolne
-                "Lab01": {"Fizyka"},       # tylko Fizyka
+                "S01": set(),  # dowolne
+                "Lab01": {"Fizyka"},  # tylko Fizyka
             },
             days=["pon", "wt", "sr"],
             periods=[1, 2, 3, 4, 5],
@@ -426,7 +427,9 @@ class TestPerformance:
         3 klasy x 5 przedmiotów x 2 godz. = 30 lekcji, 9 sal, pełny tydzień.
         Solver powinien znaleźć rozwiązanie w < 30 sekund.
         """
-        rooms_sets = {sala: set(prz) for sala, prz in full_week_solve_request.rooms.items()}
+        rooms_sets = {
+            sala: set(prz) for sala, prz in full_week_solve_request.rooms.items()
+        }
         requirements = [
             (r.klasa, r.przedmiot, r.nauczyciel, r.godziny)
             for r in full_week_solve_request.requirements

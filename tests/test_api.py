@@ -3,23 +3,24 @@ Testy integracyjne FastAPI dla zsel-plan (api/main.py).
 Pokrywa: /health, /api/plan/solve, /api/plan/ical, filtry, CORS, /docs.
 Używa FastAPI TestClient — bez zewnętrznych wywołań sieciowych.
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 # Resetuj globalny stan aplikacji przed importem
-import api.main as _main_module
+import api.main as _main_module  # noqa: E402
+
 _main_module._last_plan = None
 _main_module._last_days = []
 
-from api.main import app
+from api.main import app  # noqa: E402
 
 client = TestClient(app, raise_server_exceptions=True)
 
@@ -28,15 +29,28 @@ client = TestClient(app, raise_server_exceptions=True)
 # Pomocnik: wywołaj solve i zwróć wynik
 # ---------------------------------------------------------------------------
 
-def _solve_minimal(days=None, periods=None, rooms=None, requirements=None,
-                   teacher_unavail=None, max_seconds=15):
+
+def _solve_minimal(
+    days=None,
+    periods=None,
+    rooms=None,
+    requirements=None,
+    teacher_unavail=None,
+    max_seconds=15,
+):
     """Wywołaj POST /api/plan/solve z minimalnym payloadem."""
     payload = {
         "days": days or ["pon", "wt", "sr"],
         "periods": periods or [1, 2, 3, 4, 5],
         "rooms": rooms if rooms is not None else {"S01": []},
-        "requirements": requirements or [
-            {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 1}
+        "requirements": requirements
+        or [
+            {
+                "klasa": "1A",
+                "przedmiot": "Matematyka",
+                "nauczyciel": "Jan Kowalski",
+                "godziny": 1,
+            }
         ],
         "teacher_unavail": teacher_unavail or [],
         "max_seconds": max_seconds,
@@ -144,7 +158,12 @@ class TestSolveEndpoint:
         """Klasa w wynikach odpowiada klasie z requesta."""
         resp = _solve_minimal(
             requirements=[
-                {"klasa": "2C", "przedmiot": "Fizyka", "nauczyciel": "Marek Zając", "godziny": 1}
+                {
+                    "klasa": "2C",
+                    "przedmiot": "Fizyka",
+                    "nauczyciel": "Marek Zając",
+                    "godziny": 1,
+                }
             ]
         )
         assert resp.status_code == 200
@@ -163,8 +182,18 @@ class TestSolveEndpoint:
         resp = _solve_minimal(
             rooms={"S01": [], "S02": []},
             requirements=[
-                {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 1},
-                {"klasa": "1B", "przedmiot": "Polski", "nauczyciel": "Anna Nowak", "godziny": 1},
+                {
+                    "klasa": "1A",
+                    "przedmiot": "Matematyka",
+                    "nauczyciel": "Jan Kowalski",
+                    "godziny": 1,
+                },
+                {
+                    "klasa": "1B",
+                    "przedmiot": "Polski",
+                    "nauczyciel": "Anna Nowak",
+                    "godziny": 1,
+                },
             ],
         )
         assert resp.status_code == 200
@@ -179,11 +208,14 @@ class TestSolveEndpoint:
             periods=[1],
             rooms={"S01": []},
             requirements=[
-                {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 1}
+                {
+                    "klasa": "1A",
+                    "przedmiot": "Matematyka",
+                    "nauczyciel": "Jan Kowalski",
+                    "godziny": 1,
+                }
             ],
-            teacher_unavail=[
-                {"nauczyciel": "Jan Kowalski", "sloty": [["pon", 1]]}
-            ],
+            teacher_unavail=[{"nauczyciel": "Jan Kowalski", "sloty": [["pon", 1]]}],
         )
         assert resp.status_code == 422
 
@@ -194,11 +226,14 @@ class TestSolveEndpoint:
             periods=[1],
             rooms={"S01": []},
             requirements=[
-                {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 1}
+                {
+                    "klasa": "1A",
+                    "przedmiot": "Matematyka",
+                    "nauczyciel": "Jan Kowalski",
+                    "godziny": 1,
+                }
             ],
-            teacher_unavail=[
-                {"nauczyciel": "Jan Kowalski", "sloty": [["pon", 1]]}
-            ],
+            teacher_unavail=[{"nauczyciel": "Jan Kowalski", "sloty": [["pon", 1]]}],
         )
         assert resp.status_code == 422
         data = resp.json()
@@ -206,9 +241,14 @@ class TestSolveEndpoint:
 
     def test_solve_missing_rooms_field_422(self):
         """Brak wymaganego pola 'rooms' → 422 (walidacja Pydantic)."""
-        resp = client.post("/api/plan/solve", json={
-            "requirements": [{"klasa": "1A", "przedmiot": "Mat", "nauczyciel": "X", "godziny": 1}]
-        })
+        resp = client.post(
+            "/api/plan/solve",
+            json={
+                "requirements": [
+                    {"klasa": "1A", "przedmiot": "Mat", "nauczyciel": "X", "godziny": 1}
+                ]
+            },
+        )
         assert resp.status_code == 422
 
     def test_solve_missing_requirements_field_422(self):
@@ -223,11 +263,14 @@ class TestSolveEndpoint:
             periods=[1, 2, 3, 4, 5],
             rooms={"S01": []},
             requirements=[
-                {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 1}
+                {
+                    "klasa": "1A",
+                    "przedmiot": "Matematyka",
+                    "nauczyciel": "Jan Kowalski",
+                    "godziny": 1,
+                }
             ],
-            teacher_unavail=[
-                {"nauczyciel": "Jan Kowalski", "sloty": [["pon", 1]]}
-            ],
+            teacher_unavail=[{"nauczyciel": "Jan Kowalski", "sloty": [["pon", 1]]}],
         )
         assert resp.status_code == 200
         lekcje = resp.json()["lekcje"]
@@ -253,8 +296,18 @@ class TestIcalEndpoints:
             periods=[1, 2, 3, 4, 5],
             rooms={"S01": [], "S02": []},
             requirements=[
-                {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 2},
-                {"klasa": "2B", "przedmiot": "Polski", "nauczyciel": "Anna Nowak", "godziny": 2},
+                {
+                    "klasa": "1A",
+                    "przedmiot": "Matematyka",
+                    "nauczyciel": "Jan Kowalski",
+                    "godziny": 2,
+                },
+                {
+                    "klasa": "2B",
+                    "przedmiot": "Polski",
+                    "nauczyciel": "Anna Nowak",
+                    "godziny": 2,
+                },
             ],
         )
         assert resp.status_code == 200, f"Solve nie powiodło się: {resp.json()}"
@@ -288,6 +341,7 @@ class TestIcalEndpoints:
         """GET /api/plan/ical/all bez załadowanego planu → 404."""
         # Zresetuj globalny stan
         import api.main as m
+
         original = m._last_plan
         m._last_plan = None
         try:
@@ -324,6 +378,7 @@ class TestIcalEndpoints:
     def test_ical_no_plan_klasa_404(self):
         """GET /api/plan/ical/klasa/1A bez planu → 404."""
         import api.main as m
+
         original = m._last_plan
         m._last_plan = None
         try:
@@ -335,6 +390,7 @@ class TestIcalEndpoints:
     def test_ical_no_plan_nauczyciel_404(self):
         """GET /api/plan/ical/nauczyciel/X bez planu → 404."""
         import api.main as m
+
         original = m._last_plan
         m._last_plan = None
         try:
@@ -371,8 +427,18 @@ class TestFilterEndpoints:
             periods=[1, 2, 3, 4, 5],
             rooms={"S01": [], "S02": []},
             requirements=[
-                {"klasa": "1A", "przedmiot": "Matematyka", "nauczyciel": "Jan Kowalski", "godziny": 2},
-                {"klasa": "2B", "przedmiot": "Polski", "nauczyciel": "Anna Nowak", "godziny": 1},
+                {
+                    "klasa": "1A",
+                    "przedmiot": "Matematyka",
+                    "nauczyciel": "Jan Kowalski",
+                    "godziny": 2,
+                },
+                {
+                    "klasa": "2B",
+                    "przedmiot": "Polski",
+                    "nauczyciel": "Anna Nowak",
+                    "godziny": 1,
+                },
             ],
         )
 
@@ -410,7 +476,9 @@ class TestFilterEndpoints:
         resp = client.get("/api/plan/klasa/1A")
         assert resp.status_code == 200
         for lekcja in resp.json():
-            assert lekcja["klasa"] == "1A", f"Lekcja klasy {lekcja['klasa']} w wynikach dla 1A"
+            assert lekcja["klasa"] == "1A", (
+                f"Lekcja klasy {lekcja['klasa']} w wynikach dla 1A"
+            )
 
     def test_get_plan_nauczyciel_returns_only_that_teacher(self):
         """GET /api/plan/nauczyciel/Jan Kowalski zwraca tylko jego lekcje."""
@@ -435,6 +503,7 @@ class TestFilterEndpoints:
     def test_klasy_no_plan_404(self):
         """GET /api/plan/klasy bez planu → 404."""
         import api.main as m
+
         original = m._last_plan
         m._last_plan = None
         try:
@@ -454,7 +523,9 @@ class TestCORS:
 
     def test_cors_options_health(self):
         """OPTIONS /health zwraca nagłówki CORS Allow-Origin."""
-        resp = client.options("/health", headers={"Origin": "https://portal.zsel.opole.pl"})
+        resp = client.options(
+            "/health", headers={"Origin": "https://portal.zsel.opole.pl"}
+        )
         # FastAPI z CORSMiddleware powinno odpowiedzieć 200 lub 204
         assert resp.status_code in (200, 204)
 

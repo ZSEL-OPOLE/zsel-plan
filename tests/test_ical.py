@@ -2,18 +2,17 @@
 Testy jednostkowe eksportu iCal (api/ical.py).
 Pokrywa: struktura RFC 5545, czasy ZSEL, RRULE, SUMMARY, filtrowanie, UTF-8.
 """
+
 from __future__ import annotations
 
 import sys
 from datetime import date
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from api.ical import PERIOD_TIMES, build_ical, _fold
+from api.ical import PERIOD_TIMES, build_ical, _fold  # noqa: E402
 
 
 # ===========================================================================
@@ -169,40 +168,42 @@ class TestPeriodTimes:
 
     def test_period_times_in_ical_dtstart(self):
         """DTSTART w iCal zawiera czas z PERIOD_TIMES dla odpowiedniej lekcji."""
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "pon",
-            "dzien_idx": 0,
-            "okres": 1,  # lekcja 1 → 08:00
-            "przedmiot": "Matematyka",
-            "nauczyciel": "Jan Kowalski",
-            "sala": "S01",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "pon",
+                "dzien_idx": 0,
+                "okres": 1,  # lekcja 1 → 08:00
+                "przedmiot": "Matematyka",
+                "nauczyciel": "Jan Kowalski",
+                "sala": "S01",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=date(2026, 9, 7))  # poniedziałek
         assert "T080000" in cal, f"Brak czasu 08:00:00 w DTSTART dla lekcji 1:\n{cal}"
 
     def test_period_4_dtstart_correct(self):
         """Lekcja 4 → DTSTART T105000 (10:50)."""
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "pon",
-            "dzien_idx": 0,
-            "okres": 4,  # 10:50 → 11:35
-            "przedmiot": "Polski",
-            "nauczyciel": "Anna Nowak",
-            "sala": "S01",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "pon",
+                "dzien_idx": 0,
+                "okres": 4,  # 10:50 → 11:35
+                "przedmiot": "Polski",
+                "nauczyciel": "Anna Nowak",
+                "sala": "S01",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=date(2026, 9, 7))
-        assert "T105000" in cal, f"Brak czasu 10:50:00 w DTSTART dla lekcji 4"
+        assert "T105000" in cal, "Brak czasu 10:50:00 w DTSTART dla lekcji 4"
 
     def test_period_times_all_start_before_end(self):
         """Dla każdej lekcji czas końca jest po czasie początku."""
         for period, (start, end) in PERIOD_TIMES.items():
             start_int = int(start)
             end_int = int(end)
-            assert start_int < end_int, (
-                f"Lekcja {period}: start {start} >= end {end}"
-            )
+            assert start_int < end_int, f"Lekcja {period}: start {start} >= end {end}"
 
 
 # ===========================================================================
@@ -229,7 +230,9 @@ class TestIcalFiltering:
 
     def test_filter_by_nauczyciel(self, sample_lessons):
         """Filtrowanie po nauczycielu 'Marek Zając' zwraca jego lekcje."""
-        cal = build_ical(sample_lessons, filter_by="Marek Zając", filter_field="nauczyciel")
+        cal = build_ical(
+            sample_lessons, filter_by="Marek Zając", filter_field="nauczyciel"
+        )
         assert cal.count("BEGIN:VEVENT") == 1
         assert "Fizyka" in cal
 
@@ -252,7 +255,9 @@ class TestIcalFiltering:
 
     def test_filter_by_nauczyciel_summary_includes_klasa(self, sample_lessons):
         """Gdy filtr to nauczyciel, SUMMARY zawiera też klasę."""
-        cal = build_ical(sample_lessons, filter_by="Jan Kowalski", filter_field="nauczyciel")
+        cal = build_ical(
+            sample_lessons, filter_by="Jan Kowalski", filter_field="nauczyciel"
+        )
         # filter_field != "klasa" → summary_parts.append(l["klasa"])
         assert "1A" in cal
 
@@ -267,30 +272,34 @@ class TestSchoolYearDate:
 
     def test_school_year_start_applied(self):
         """DTSTART uwzględnia podaną datę początku roku szkolnego."""
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "pon",
-            "dzien_idx": 0,
-            "okres": 1,
-            "przedmiot": "Matematyka",
-            "nauczyciel": "Jan Kowalski",
-            "sala": "S01",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "pon",
+                "dzien_idx": 0,
+                "okres": 1,
+                "przedmiot": "Matematyka",
+                "nauczyciel": "Jan Kowalski",
+                "sala": "S01",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=date(2026, 9, 7))
         # Poniedziałek 2026-09-07 + dzien_idx=0 = 20260907
         assert "20260907" in cal
 
     def test_dtstart_offset_for_tuesday(self):
         """Lekcja we wtorek (dzien_idx=1) ma DTSTART o dzień później niż poniedziałek."""
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "wt",
-            "dzien_idx": 1,
-            "okres": 2,
-            "przedmiot": "Polski",
-            "nauczyciel": "Anna Nowak",
-            "sala": "S02",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "wt",
+                "dzien_idx": 1,
+                "okres": 2,
+                "przedmiot": "Polski",
+                "nauczyciel": "Anna Nowak",
+                "sala": "S02",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=date(2026, 9, 7))
         # wt = 2026-09-07 + 1 = 2026-09-08
         assert "20260908" in cal
@@ -298,47 +307,54 @@ class TestSchoolYearDate:
     def test_rrule_until_is_40_weeks_after_start(self):
         """UNTIL w RRULE jest 40 tygodni po school_year_start."""
         from datetime import timedelta
+
         start = date(2026, 9, 7)
         expected_end = start + timedelta(weeks=40)
         until_str = expected_end.strftime("%Y%m%d")
 
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "pon",
-            "dzien_idx": 0,
-            "okres": 1,
-            "przedmiot": "Matematyka",
-            "nauczyciel": "Jan Kowalski",
-            "sala": "S01",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "pon",
+                "dzien_idx": 0,
+                "okres": 1,
+                "przedmiot": "Matematyka",
+                "nauczyciel": "Jan Kowalski",
+                "sala": "S01",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=start)
         assert until_str in cal, f"Oczekiwano UNTIL {until_str} w:\n{cal[:500]}"
 
     def test_rrule_day_mo_for_monday(self):
         """RRULE dla lekcji w poniedziałek (dzien_idx=0) używa BYDAY=MO."""
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "pon",
-            "dzien_idx": 0,
-            "okres": 1,
-            "przedmiot": "Matematyka",
-            "nauczyciel": "Jan Kowalski",
-            "sala": "S01",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "pon",
+                "dzien_idx": 0,
+                "okres": 1,
+                "przedmiot": "Matematyka",
+                "nauczyciel": "Jan Kowalski",
+                "sala": "S01",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=date(2026, 9, 7))
         assert "BYDAY=MO" in cal
 
     def test_rrule_day_fr_for_friday(self):
         """RRULE dla lekcji w piątek (dzien_idx=4) używa BYDAY=FR."""
-        lesson = [{
-            "klasa": "1A",
-            "dzien": "pt",
-            "dzien_idx": 4,
-            "okres": 3,
-            "przedmiot": "Fizyka",
-            "nauczyciel": "Marek Zając",
-            "sala": "Lab01",
-        }]
+        lesson = [
+            {
+                "klasa": "1A",
+                "dzien": "pt",
+                "dzien_idx": 4,
+                "okres": 3,
+                "przedmiot": "Fizyka",
+                "nauczyciel": "Marek Zając",
+                "sala": "Lab01",
+            }
+        ]
         cal = build_ical(lesson, school_year_start=date(2026, 9, 7))
         assert "BYDAY=FR" in cal
 

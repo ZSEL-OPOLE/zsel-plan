@@ -2,6 +2,7 @@
 Współdzielone fixtures pytest dla testów zsel-plan.
 Zawiera: minimalne i bardziej złożone SolveRequest, przykładowe lekcje, instancje solvera.
 """
+
 from __future__ import annotations
 
 import sys
@@ -12,9 +13,8 @@ import pytest
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from api.models import RequirementIn, SolveRequest, TeacherUnavailIn
-from api.ical import build_ical
-from solver.solver import Instance
+from api.models import RequirementIn, SolveRequest  # noqa: E402
+from solver.solver import Instance  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -31,9 +31,11 @@ def minimal_solve_request() -> SolveRequest:
     return SolveRequest(
         days=["pon", "wt", "sr", "czw", "pt"],
         periods=list(range(1, 6)),  # lekcje 1-5 (mniej = szybsze testy)
-        rooms={"S01": []},          # [] = dowolne przedmioty
+        rooms={"S01": []},  # [] = dowolne przedmioty
         requirements=[
-            RequirementIn(klasa="1A", przedmiot="Matematyka", nauczyciel="Jan Kowalski", godziny=1)
+            RequirementIn(
+                klasa="1A", przedmiot="Matematyka", nauczyciel="Jan Kowalski", godziny=1
+            )
         ],
         teacher_unavail=[],
         max_seconds=10,
@@ -54,8 +56,15 @@ def two_class_solve_request() -> SolveRequest:
             "S02": [],
         },
         requirements=[
-            RequirementIn(klasa="1A", przedmiot="Polski", nauczyciel="Anna Nowak", godziny=2),
-            RequirementIn(klasa="1B", przedmiot="Historia", nauczyciel="Piotr Wiśniewski", godziny=2),
+            RequirementIn(
+                klasa="1A", przedmiot="Polski", nauczyciel="Anna Nowak", godziny=2
+            ),
+            RequirementIn(
+                klasa="1B",
+                przedmiot="Historia",
+                nauczyciel="Piotr Wiśniewski",
+                godziny=2,
+            ),
         ],
         teacher_unavail=[],
         max_seconds=10,
