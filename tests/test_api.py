@@ -522,11 +522,15 @@ class TestCORS:
     """Testy nagłówków CORS."""
 
     def test_cors_options_health(self):
-        """OPTIONS /health zwraca nagłówki CORS Allow-Origin."""
+        """OPTIONS /health zwraca nagłówki CORS Allow-Origin (preflight)."""
         resp = client.options(
-            "/health", headers={"Origin": "https://portal.zsel.opole.pl"}
+            "/health",
+            headers={
+                "Origin": "https://portal.zsel.opole.pl",
+                "Access-Control-Request-Method": "GET",
+            },
         )
-        # FastAPI z CORSMiddleware powinno odpowiedzieć 200 lub 204
+        # CORS preflight z Access-Control-Request-Method → CORSMiddleware odpowiada 200
         assert resp.status_code in (200, 204)
 
     def test_cors_get_allows_all_origins(self):
