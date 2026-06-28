@@ -222,4 +222,3 @@ def ical_all(
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="plan-szkola.ics"'},
     )
-
