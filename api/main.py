@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Upewnij się, że solver jest w PYTHONPATH
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -29,6 +30,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # In-memory cache ostatniego wygenerowanego planu (produkacja: persistent store)
 _last_plan: list[LessonOut] | None = None
@@ -217,3 +220,4 @@ def ical_all(
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="plan-szkola.ics"'},
     )
+
