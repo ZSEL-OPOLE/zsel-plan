@@ -31,7 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+Instrumentator().instrument(app).expose(
+    app, endpoint="/metrics", include_in_schema=False
+)
 
 # In-memory cache ostatniego wygenerowanego planu (produkacja: persistent store)
 _last_plan: list[LessonOut] | None = None
